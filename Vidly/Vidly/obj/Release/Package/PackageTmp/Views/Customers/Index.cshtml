@@ -1,0 +1,183 @@
+﻿@model List<Vidly.Models.Customer>
+
+@{
+	ViewBag.Title = "Customers";
+	Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>Customers</h2>
+<p>@Html.ActionLink("New Customer", "New", "Customers", null, new { @class = "btn btn-primary" })</p>
+@{var grid = new WebGrid(Model, canPage: true);}
+<div>
+	@grid.GetHtml(tableStyle: "table table-bordered table-hover",
+	columns:grid.Columns(
+		@*grid.Column("Name","Name",format:@<text>@Html.ActionLink((linkText: (string)@item.Name.ToString(), actionName: "Details",, controllerName: "Customers", routeValues: new { id = item.Id }))</text>),*@
+		grid.Column("Name", "Customer Name", format: (item) =>
+		{
+			var links = Html.ActionLink(((string)item.Name), "Display", "Customers", new { id = item.Id }, new { @class = "nav-link" });
+			return Html.Raw(links);
+
+		}),
+		grid.Column("Name", "Customer Name",
+		format: (item) => Html.ActionLink(((string)item.Name), "Display", "Customers", new { id = item.Id }, new { @class = "nav-link" })),
+		grid.Column("IsSubscribedToNewsletter", header: "Subscribed"),
+		grid.Column("BirthDate", header: "Date Of Birth"),
+		grid.Column("MembershipType.DiscountRate", header: "Discount Rate"),
+		grid.Column("Discount Rate", format: (item) => item.MembershipType.DiscountRate + "%"),
+		grid.Column("MembershipType.Name", header: "Membership Type"),
+		grid.Column("", header: "Action",
+		format: (item) => Html.ActionLink(" ", "Edit", "Customers", new { id = item.Id },
+		new { @style = "background: url('" + Url.Content("~/Content/images/edit.png") + "') no-repeat center right; display:block; height:65px;width:65px;" }))
+		@*grid.Column(header: "Edit", format: @<text><img src="@item.AdPath" id="adimg" alt="YourText" title="YourText" width="50px" height="50px"></text>),*@
+		))
+
+</div>
+<ul>
+	@foreach (var item in Model)
+	{
+		<li>@Html.ActionLink(@item.Name, "Display", "Customers", new { id = @item.Id }, new { @class = "nav-link" })</li>
+		//string linkText, string actionName, string controllerName, object routeValues, object htmlAttributes
+		//<a class="nav-link" href="/Customers/Display/1">John</a>
+		//<li>@Html.ActionLink(@item.Name, "Display", "Cus", new { id = @item.Id })</li>
+		//string linkText, string actionName, object routeValues, object htmlAttributes
+		//<a href="/Customers/Display?Length=3" id="1">John</a>
+		@*@Html.ActionLink(" ", "Index", "Home", new {id= Item.Id }, new
+			{
+				style = "background: url('" + Url.Content("~/assets/images/foto_usuario.png") + "') no-repeat center right; display:block; height:50px;width:50px;"
+			})*@
+
+	}
+</ul>
+<table id="customers" class="table-bordered table table-hover" style="width:100%">
+	<thead>
+		<tr>
+			<th>Customer Name</th>
+			<th>Date of Birth</th>
+			<th>Subscribed</th>
+			<th>Membership Type</th>
+			<th>Discount Rate</th>
+			<th>Action</th>
+		</tr>
+	</thead>
+	<tbody>
+		@*@foreach (var item in Model)
+			{
+				<tr>
+					<td>@Html.ActionLink(@item.Name, "Display", "Customers", new { id = @item.Id }, new { @class = "nav-link" })</td>
+					<td>@item.MembershipType.DiscountRate%</td>
+					<td>@item.MembershipType.Name</td>
+					<td><button data-customer-id="@item.Id" class="btn-link js-delete">Delete</button></td>
+				</tr>
+			}*@
+	</tbody>
+</table>
+
+@section scripts
+{
+	<script type="text/javascript">
+		$(function () {
+
+			/*
+			There are two methods of getting data from api.These are as follows:
+			1)
+			$.ajax({
+				url: "/api/customers/",
+				method: "GET",
+				success: function (data) {
+					$("#customers").DataTable({
+						data: data,
+						columns: [
+							{
+								'data': "name",
+							},
+							{
+								'data': 'birthDate',
+								'render': function (jsonDate) {
+									var date = new Date(parseInt(jsonDate.substr(6)));
+									var month = date.getMonth() + 1;
+									return month + "/" + date.getDate() + "/" + date.getFullYear();
+								}
+							},
+							{
+								'data': "membershipType.name"
+							},
+							{
+								'data': "membershipType.discountRate",
+							},
+						]
+					});
+				}
+			});
+
+		   2)*/
+			var table = $("#customers").DataTable({
+				ajax: {
+					url: "/api/customers",
+					dataSrc: ""
+				},
+				columns: [
+					{
+						data: "Name",
+						render: function (data, type, customer) {
+							return "<a href='/customers/edit/" + customer.id + "'>" + customer.name + "</a>"
+						}
+					},
+					{
+						data: 'birthDate'
+					},
+					{
+						data: 'isSubscribedToNewsletter'
+					},
+					{
+						data: "membershipType.name"
+					},
+					{
+						data: "membershipType.discountRate",
+						render: function (data) {
+							return data + "%"
+						}
+					},
+					{
+						data: "id",
+						render: function (data, type, customer) {
+							return "<button class='btn-link js-delete' data-customer-id=" + data + ">Delete</button>"
+						}
+					}
+				]
+			});
+
+			var confirmMessage = "Are you want to delete this record?"
+			$("#customers").on("click", ".js-delete", function () {
+				var button = $(this);
+				bootbox.confirm(confirmMessage, function (result) {
+					if (result) {
+						$.ajax({
+							url: "/api/customers/" + button.attr("data-customer-id"),
+							method: "DELETE",
+							success: function () {
+								table.row(button.parents("tr")).remove().draw();
+							}
+						});
+					}
+				});
+
+				/*
+				 * Following method returns simple confirm dialog box.
+
+					if (confirm(confirmMessage)) {
+					$.ajax({
+						url: "/api/customers/"+button.attr("data-customer-id"),
+						method: "DELETE",
+						success: function () {
+							button.parents("tr").remove();
+						}
+					});
+					}
+				 */
+
+
+			});
+
+		});
+	</script>
+}
